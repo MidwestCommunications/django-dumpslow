@@ -38,16 +38,24 @@ class LogLongRequestMiddleware(object):
             # __name__ attribute; try and get the name of its class
             view += callback.__class__.__name__
 
+        self.local.request = request
         self.local.view = view
         self.local.start_time = time.time()
 
     def process_response(self, request, response):
         try:
+            view_request = self.local.request
             view = self.local.view
             time_taken = time.time() - self.local.start_time
         except AttributeError:
             # If, for whatever reason, the variables are not available, don't
             # do anything else.
+            return response
+
+        if request != view_request:
+            # Some responses "short-circuit" the process_view middleware, so we
+            # need to verify that this is the same request as that encountered
+            # by process_view.
             return response
 
         if time_taken < getattr(settings, 'DUMPSLOW_LONG_REQUEST_TIME', 1):
